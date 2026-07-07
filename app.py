@@ -3,21 +3,23 @@ from flask_cors import CORS
 import tensorflow as tf
 import pickle
 import os
-import numpy as np
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 app = Flask(__name__)
 CORS(app)
 
-# 1. 모델과 토크나이저 로드
-try:
-    model = tf.keras.models.load_model('vdcnn_model_with_kogpt2.h5')
-    with open("tokenizer_with_kogpt2.pickle", "rb") as f:
-        tokenizer = pickle.load(f)
-    model_loaded = True
-except Exception as e:
-    print(f"모델 로드 오류: {e}")
-    model_loaded = False
+# 1. 모델과 토크나이저 로드 (제시해주신 코드 구조 그대로)
+maxlen = 1000  # 예시 코드의 200이 아닌, 실제 모델 학습 시 1000으로 하셨던 것으로 유지
+model_path = 'vdcnn_model_with_kogpt2.h5'
+tokenizer_path = "tokenizer_with_kogpt2.pickle"
+
+model = tf.keras.models.load_model(model_path)
+with open(tokenizer_path, "rb") as f:
+    tokenizer = pickle.load(f)
+
+# 2. 전처리 및 예측 함수 (선생님 예시 로직 통합)
+def preprocess_text(text):
+    return text.lower()
 
 @app.route('/healthz', methods=['GET'])
 def healthz():
@@ -25,36 +27,36 @@ def healthz():
 
 @app.route('/check', methods=['POST'])
 def check_toxic():
-    if not model_loaded:
-        return jsonify({'isToxic': False})
-    
     try:
         data = request.json
         text = data.get('text', '')
-        if not text: return jsonify({'isToxic': False})
-
-        # 2. 토크나이징 (Tokenizer가 가진 기능만 최소한으로 호출)
-        # hasattr 체크를 빼고 바로 시도합니다.
-        try:
-            # 1순위: texts_to_sequences 시도
-            seq = tokenizer.texts_to_sequences([text.lower()])
-        except:
-            # 2순위: encode 시도
-            seq = [tokenizer.encode(text.lower())]
-            
-        sentence_seq = pad_sequences(seq, maxlen=1000, truncating="post")
         
-        # 3. 예측
+        sentence = preprocess_text(text)
+        
+        # [예시 코드 방식 적용] encode_plus 활용
+        # tokenizer 객체가 encode_plus를 가지고 있는지 확인하고 사용
+        if hasattr(tokenizer, 'encode_plus'):
+            encoded = tokenizer.encode_plus(
+                sentence,
+                max_length=maxlen,
+                padding="max_length",
+                truncation=True
+            )['input_ids']
+            sentence_seq = pad_sequences([encoded], maxlen=maxlen, truncating="post")
+        else:
+            # 혹시 모를 상황 대비 (학습된 토크나이저가 다른 경우)
+            seq = tokenizer.texts_to_sequences([sentence])
+            sentence_seq = pad_sequences(seq, maxlen=maxlen, truncating="post")
+
         prediction = model.predict(sentence_seq)[0][0]
         
-        # [로그 확인] 이 값을 보면 왜 안 걸러지는지 바로 나옵니다.
-        print(f"DEBUG_SCORE: 텍스트='{text}', 예측점수={prediction}")
+        # 로그 확인
+        print(f"DEBUG: 텍스트='{text}', 예측값={prediction}")
         
-        # 임계값을 낮춰서라도 욕설을 잡도록 설정
-        return jsonify({'isToxic': bool(prediction >= 0.1)})
+        return jsonify({'isToxic': bool(prediction >= 0.5)})
         
     except Exception as e:
-        print(f"예측 에러: {e}")
+        print(f"에러 발생: {e}")
         return jsonify({'isToxic': False})
 
 if __name__ == '__main__':
