@@ -3,4 +3,4 @@ flask-cors
 gunicorn
 numpy
 transformers
-tensorflow==2.15.0
+tensorflow
