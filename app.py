@@ -8,22 +8,11 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 app = Flask(__name__)
 CORS(app)
 
-# 1. 모델과 토크나이저 로드 (제시해주신 코드 구조 그대로)
-maxlen = 1000  # 예시 코드의 200이 아닌, 실제 모델 학습 시 1000으로 하셨던 것으로 유지
-model_path = 'vdcnn_model_with_kogpt2.h5'
-tokenizer_path = "tokenizer_with_kogpt2.pickle"
-
-model = tf.keras.models.load_model(model_path)
-with open(tokenizer_path, "rb") as f:
+# KoGPT2 모델 구조에 맞는 로드
+maxlen = 1000
+model = tf.keras.models.load_model('vdcnn_model_with_kogpt2.h5')
+with open("tokenizer_with_kogpt2.pickle", "rb") as f:
     tokenizer = pickle.load(f)
-
-# 2. 전처리 및 예측 함수 (선생님 예시 로직 통합)
-def preprocess_text(text):
-    return text.lower()
-
-@app.route('/healthz', methods=['GET'])
-def healthz():
-    return "OK", 200
 
 @app.route('/check', methods=['POST'])
 def check_toxic():
@@ -31,32 +20,23 @@ def check_toxic():
         data = request.json
         text = data.get('text', '')
         
-        sentence = preprocess_text(text)
-        
-        # [예시 코드 방식 적용] encode_plus 활용
-        # tokenizer 객체가 encode_plus를 가지고 있는지 확인하고 사용
-        if hasattr(tokenizer, 'encode_plus'):
-            encoded = tokenizer.encode_plus(
-                sentence,
-                max_length=maxlen,
-                padding="max_length",
-                truncation=True
-            )['input_ids']
-            sentence_seq = pad_sequences([encoded], maxlen=maxlen, truncating="post")
-        else:
-            # 혹시 모를 상황 대비 (학습된 토크나이저가 다른 경우)
-            seq = tokenizer.texts_to_sequences([sentence])
-            sentence_seq = pad_sequences(seq, maxlen=maxlen, truncating="post")
+        # main_kogpt2.py의 핵심 로직 (encode_plus)
+        encoded_sentence = tokenizer.encode_plus(
+            text.lower(),
+            max_length=maxlen,
+            padding="max_length",
+            truncation=True
+        )['input_ids']
 
+        sentence_seq = pad_sequences([encoded_sentence], maxlen=maxlen, truncating="post")
         prediction = model.predict(sentence_seq)[0][0]
         
-        # 로그 확인
-        print(f"DEBUG: 텍스트='{text}', 예측값={prediction}")
+        # 모델 예측값 로그 출력 (디버깅용)
+        print(f"DEBUG: Input='{text}', Score={prediction}")
         
         return jsonify({'isToxic': bool(prediction >= 0.5)})
-        
     except Exception as e:
-        print(f"에러 발생: {e}")
+        print(f"Error: {e}")
         return jsonify({'isToxic': False})
 
 if __name__ == '__main__':
