@@ -1,0 +1,1 @@
+# korean-bad-words-filter
