@@ -17,7 +17,9 @@ with open("tokenizer_with_kogpt2.pickle", "rb") as f:
 # [가장 중요한 부분] 라이브러리 메서드 대신 속성(vocab)만 사용
 # 만약 word_index가 없다면 학습 파일 구조를 따르는 다른 속성을 찾습니다.
 vocab = getattr(tokenizer, 'word_index', getattr(tokenizer, 'vocab', {}))
-
+@app.route('/healthz', methods=['GET'])
+def health():
+    return '', 200
 @app.route('/check', methods=['POST'])
 def check_toxic():
     try:
