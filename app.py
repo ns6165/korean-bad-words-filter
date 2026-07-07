@@ -8,51 +8,49 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 app = Flask(__name__)
 CORS(app)
 
-# 1. 모델과 토크나이저 로드
-try:
-    model = tf.keras.models.load_model('vdcnn_model_with_kogpt2.h5')
-    with open("tokenizer_with_kogpt2.pickle", "rb") as f:
-        tokenizer = pickle.load(f)
-    model_loaded = True
-except Exception as e:
-    print(f"로드 오류: {e}")
-    model_loaded = False
+# 1. 모델과 토크나이저 로드 (예시 코드와 동일한 경로)
+model_path = 'vdcnn_model_with_kogpt2.h5'
+tokenizer_path = "tokenizer_with_kogpt2.pickle"
 
-@app.route('/healthz', methods=['GET'])
-def healthz():
-    return "OK", 200
+# 모델 로드
+model = tf.keras.models.load_model(model_path)
+# 토크나이저 로드
+with open(tokenizer_path, "rb") as f:
+    tokenizer = pickle.load(f)
 
 @app.route('/check', methods=['POST'])
 def check_toxic():
-    if not model_loaded: return jsonify({'isToxic': False})
-    
     try:
         data = request.json
-        text = str(data.get('text', '')).lower()
-        if not text: return jsonify({'isToxic': False})
+        text = data.get('text', '')
         
-        # [수정된 핵심 로직] 
-        # 선생님 예시 코드의 encode_plus만 사용합니다.
-        # texts_to_sequences를 완전히 제거했습니다.
+        # 2. 예시 코드의 텍스트 전처리 방식 그대로 사용
+        sentence = text.lower()
+        
+        # 3. [핵심] 예시 코드의 encode_plus 로직 그대로 적용
+        # tokenizer 객체의 encode_plus를 사용하여 모델 입력 생성
         encoded_sentence = tokenizer.encode_plus(
-            text,
+            sentence,
             max_length=1000,
             padding="max_length",
             truncation=True
         )['input_ids']
         
+        # 모델 입력 형상 맞추기
         sentence_seq = pad_sequences([encoded_sentence], maxlen=1000, truncating="post")
+        
+        # 4. 모델 예측
         prediction = model.predict(sentence_seq)[0][0]
         
-        print(f"DEBUG_SCORE: 텍스트='{text}', 예측점수={prediction}")
+        # 로그 확인용: 점수가 어떻게 나오는지 서버 로그에 찍어줍니다.
+        print(f"DEBUG: Input='{text}', Score={prediction}")
         
-        # 0.5 이상이면 True 반환
+        # 0.5 이상이면 True로 판정
         return jsonify({'isToxic': bool(prediction >= 0.5)})
         
     except Exception as e:
-        # 에러가 나면 굳이 False를 뱉지 말고, 
-        # 에러 내용을 로그에 찍어서 확인해야 합니다.
-        print(f"상세 에러 내용: {e}")
+        # 에러 발생 시 로그 확인 (여기에 에러 내용이 찍힐 겁니다)
+        print(f"ERROR: {str(e)}")
         return jsonify({'isToxic': False})
 
 if __name__ == '__main__':
