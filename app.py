@@ -38,8 +38,9 @@ def check_toxic():
             seq = [tokenizer.encode(text.lower())]
             
         sentence_seq = pad_sequences(seq, maxlen=1000, truncating="post")
-        prediction = model.predict(sentence_seq)[0][0]
-        
+prediction = model.predict(sentence_seq)[0][0]
+print(f"DEBUG: 텍스트='{text}', 예측값={prediction}") # 예측값이 몇인지 로그에서 확인 가능
+is_toxic = bool(prediction >= 0.1)        
         return jsonify({'isToxic': bool(prediction >= 0.3)})
     except Exception as e:
         return jsonify({'isToxic': False})
