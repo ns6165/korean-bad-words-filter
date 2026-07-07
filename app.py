@@ -35,7 +35,7 @@ def check_toxic():
         
 # 3. 모델 예측
         prediction = model.predict(sentence_seq)
-        is_toxic = bool(prediction[0][0] > 0.5) # 모델 결과에 따른 판단
+        is_toxic = bool(prediction[0][0] > 0.9) # 모델 결과에 따른 판단
         
         return jsonify({'isToxic': is_toxic})
 
