@@ -3,12 +3,13 @@ from flask_cors import CORS
 import tensorflow as tf
 import pickle
 import os
+import numpy as np
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 app = Flask(__name__)
 CORS(app)
 
-# 모델 및 토크나이저 로드
+# 1. 모델과 토크나이저 로드
 try:
     model = tf.keras.models.load_model('vdcnn_model_with_kogpt2.h5')
     with open("tokenizer_with_kogpt2.pickle", "rb") as f:
@@ -32,26 +33,28 @@ def check_toxic():
         text = data.get('text', '')
         if not text: return jsonify({'isToxic': False})
 
-        # 토크나이징 (Tokenizer가 가진 방식대로 숫자 배열로 변환)
-        if hasattr(tokenizer, 'texts_to_sequences'):
+        # 2. 토크나이징 (Tokenizer가 가진 기능만 최소한으로 호출)
+        # hasattr 체크를 빼고 바로 시도합니다.
+        try:
+            # 1순위: texts_to_sequences 시도
             seq = tokenizer.texts_to_sequences([text.lower()])
-        else:
+        except:
+            # 2순위: encode 시도
             seq = [tokenizer.encode(text.lower())]
             
         sentence_seq = pad_sequences(seq, maxlen=1000, truncating="post")
         
-        # 모델 예측
+        # 3. 예측
         prediction = model.predict(sentence_seq)[0][0]
         
-        # [로그 확인] 이 부분이 Render의 Logs 탭에 실시간으로 찍힙니다.
-        # 욕설 입력 시 예측값이 어떻게 나오는지 여기서 확인 가능합니다.
-        print(f"DEBUG_LOG: 입력텍스트='{text}', 모델예측점수={prediction}")
+        # [로그 확인] 이 값을 보면 왜 안 걸러지는지 바로 나옵니다.
+        print(f"DEBUG_SCORE: 텍스트='{text}', 예측점수={prediction}")
         
-        # 임계값 0.5 이상이면 True로 판정
-        return jsonify({'isToxic': bool(prediction >= 0.5)})
+        # 임계값을 낮춰서라도 욕설을 잡도록 설정
+        return jsonify({'isToxic': bool(prediction >= 0.1)})
         
     except Exception as e:
-        print(f"예측 중 오류 발생: {e}")
+        print(f"예측 에러: {e}")
         return jsonify({'isToxic': False})
 
 if __name__ == '__main__':
