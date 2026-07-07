@@ -38,7 +38,8 @@ def check_toxic():
             encoded = encoded.get('input_ids', [])
         
         sentence_seq = pad_sequences([encoded], maxlen=maxlen, truncating="post")
-        prediction = model.predict(sentence_seq)[0][0]
+       prediction = model.predict(sentence_seq)[0][0]
+print(f"DEBUG: Input: {text}, Score: {prediction}")
         
         return jsonify({'isToxic': bool(prediction >= 0.5)})
         
