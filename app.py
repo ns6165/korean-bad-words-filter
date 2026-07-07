@@ -29,21 +29,24 @@ def check_toxic():
         data = request.json
         text = str(data.get('text', '')).lower()
         
-        # 3. 사전 기반 토크나이징 (가장 안전한 방식)
-        # 단어를 쪼개고, 사전에 있으면 숫자로, 없으면 0으로 바꿈
-        tokens = text.split()
-        seq = [[vocab.get(w, 0) for w in tokens]]
-        
+        # [핵심] 선생님의 토크나이저가 KoGPT2용이므로, 
+        # 단어를 split()으로 쪼개지 말고 tokenizer 자체의 encode 기능을 씁니다.
+        # 대부분의 KoGPT2 토크나이저는 .encode() 함수를 가지고 있습니다.
+        if hasattr(tokenizer, 'encode'):
+            encoded_ids = tokenizer.encode(text)
+        else:
+            # 예외: 만약 위게 안되면 아래 코드로 바꿔보세요.
+            encoded_ids = tokenizer.texts_to_sequences([text])[0]
+
         # 4. 모델 입력 맞추기 (maxlen 1000)
-        sentence_seq = pad_sequences(seq, maxlen=1000, truncating="post", padding="post")
+        sentence_seq = pad_sequences([encoded_ids], maxlen=1000, truncating="post", padding="post")
         
         # 5. 모델 예측
         prediction = model.predict(sentence_seq)[0][0]
         
-        # 확인용 로그
         print(f"DEBUG_SCORE: 텍스트='{text}', 예측값={prediction}")
         
-        # 0.5 이상이면 욕설로 판정
+        # 0.5 이상이면 욕설 판정
         return jsonify({'isToxic': bool(prediction >= 0.5)})
         
     except Exception as e:
