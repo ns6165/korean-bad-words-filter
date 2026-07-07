@@ -18,6 +18,10 @@ except Exception as e:
     print(f"모델 로드 오류: {e}")
     model_loaded = False
 
+@app.route('/healthz', methods=['GET'])
+def healthz():
+    return "OK", 200
+
 @app.route('/check', methods=['POST'])
 def check_toxic():
     if not model_loaded:
@@ -28,7 +32,7 @@ def check_toxic():
         text = data.get('text', '')
         if not text: return jsonify({'isToxic': False})
 
-        # 토크나이징
+        # 토크나이징 (Tokenizer가 가진 방식대로 숫자 배열로 변환)
         if hasattr(tokenizer, 'texts_to_sequences'):
             seq = tokenizer.texts_to_sequences([text.lower()])
         else:
@@ -36,17 +40,18 @@ def check_toxic():
             
         sentence_seq = pad_sequences(seq, maxlen=1000, truncating="post")
         
-        # 모델 예측 (딥러닝 모델의 출력값만 사용)
+        # 모델 예측
         prediction = model.predict(sentence_seq)[0][0]
         
-        # 로그 확인용 (Render Logs에서 확인 가능)
-        print(f"DEBUG: 텍스트='{text}', 예측값={prediction}")
+        # [로그 확인] 이 부분이 Render의 Logs 탭에 실시간으로 찍힙니다.
+        # 욕설 입력 시 예측값이 어떻게 나오는지 여기서 확인 가능합니다.
+        print(f"DEBUG_LOG: 입력텍스트='{text}', 모델예측점수={prediction}")
         
-        # 0.5 이상이면 True, 아니면 False (임계값 0.5로 복구)
+        # 임계값 0.5 이상이면 True로 판정
         return jsonify({'isToxic': bool(prediction >= 0.5)})
         
     except Exception as e:
-        print(f"예측 오류: {e}")
+        print(f"예측 중 오류 발생: {e}")
         return jsonify({'isToxic': False})
 
 if __name__ == '__main__':
