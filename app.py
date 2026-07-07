@@ -31,4 +31,16 @@ def check_toxic():
         # 2. 패딩 (학습 시 모델이 요구하는 1000차원)
         sentence_seq = pad_sequences(seq, maxlen=1000, truncating="post", padding="post")
         
-        # 3. 모델 예측
+# 3. 모델 예측
+        prediction = model.predict(sentence_seq)
+        is_toxic = bool(prediction[0][0] > 0.5) # 모델 결과에 따른 판단
+        
+        return jsonify({'isToxic': is_toxic})
+
+    except Exception as e:
+        # 에러가 발생해도 서버가 죽지 않고 클라이언트에게 알려줌
+        print(f"Error occurred: {e}")
+        return jsonify({'isToxic': False, 'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
