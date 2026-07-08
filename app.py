@@ -21,18 +21,27 @@ def health():
 @app.route('/check', methods=['POST'])
 def check_toxic():
     try:
-        text = str(request.json.get('text', '')).lower()
+        data = request.json
+        text = str(data.get('text', '')).lower()
         
-        # 2. 깃허브(main_kogpt2.py)의 로직 그대로 사용
-        encoded = tokenizer.encode_plus(text, max_length=maxlen, padding="max_length", truncation=True)['input_ids']
-        sentence_seq = pad_sequences([encoded], maxlen=maxlen, truncating="post", padding="post")
+        # 1. 전처리 로직 (깃허브 main_kogpt2.py 로직)
+        encoded = tokenizer.encode_plus(text, max_length=1000, padding="max_length", truncation=True)['input_ids']
+        sentence_seq = pad_sequences([encoded], maxlen=1000, truncating="post", padding="post")
         
-        # 3. 모델 예측
-        prediction = model.predict(sentence_seq)[0][0]
-        is_toxic = bool(prediction > 0.9)
+        # 2. 모델 예측
+        prediction = model.predict(sentence_seq)
         
+        # 3. 점수 확인 (로그 출력)
+        score = float(prediction[0][0])
+        print(f"DEBUG: 문장='{text}', 예측값={score}")
+        
+        is_toxic = bool(score > 0.9)
         return jsonify({'isToxic': is_toxic})
+        
     except Exception as e:
+        # [중요] 에러가 나면 정확히 어떤 에러인지 서버 로그에 남김
+        import traceback
+        traceback.print_exc() 
         return jsonify({'isToxic': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
